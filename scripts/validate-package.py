@@ -87,9 +87,11 @@ for index, pattern_match in enumerate(pattern_matches):
         block_end = len(skill)
     block = skill[block_start:block_end]
     number = pattern_match.group(1)
-    require(block.count("\nΠριν:\n>") == 1, f"Pattern {number} must have one Πριν example")
-    require(block.count("\nΜετά:\n>") == 1, f"Pattern {number} must have one Μετά example")
-    require(block.index("\nΠριν:\n>") < block.index("\nΜετά:\n>"), f"Pattern {number} examples are out of order")
+    before_marker = "\nΠριν:\n>"
+    after_marker = "\nΜετά:\n>"
+    require(block.count(before_marker) == 1, f"Pattern {number} must have one Πριν example")
+    require(block.count(after_marker) == 1, f"Pattern {number} must have one Μετά example")
+    require(block.index(before_marker) < block.index(after_marker), f"Pattern {number} examples are out of order")
 
 readme_numbers = {
     int(number) for number in re.findall(r"(?m)^\|\s*([0-9]+)\s*\|", readme)

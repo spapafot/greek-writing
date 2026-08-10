@@ -1,28 +1,28 @@
 # AGENTS.md
 
-Οδηγίες για coding agents που συντηρούν αυτό το repository.
+Instructions for coding agents that maintain this repository.
 
-## Τι περιέχει
+## Repository contents
 
-Το Greek Writing είναι φορητό agent skill σε Markdown. Δεν έχει build step και δεν πρέπει να εξαρτάται από συγκεκριμένο μοντέλο ή agent harness.
+Greek Writing is a portable agent skill written in Markdown. It has no build step and must not depend on a specific model or agent harness.
 
-- Το SKILL.md είναι η πηγή αλήθειας για τη συμπεριφορά.
-- Το README.md εξηγεί εγκατάσταση, χρήση, μοτίβα και εκδόσεις.
-- Το agents/openai.yaml περιέχει μόνο UI metadata.
-- Τα αρχεία στο .claude-plugin υποστηρίζουν την προαιρετική εγκατάσταση ως Claude Code plugin.
-- Το scripts/validate-package.py ελέγχει τις κοινές συμβάσεις του package.
+- `SKILL.md` is the source of truth for behavior.
+- `README.md` explains installation, usage, patterns, and releases.
+- `agents/openai.yaml` contains UI metadata only.
+- The files in `.claude-plugin` support optional installation as a Claude Code plugin.
+- `scripts/validate-package.py` checks the package's shared conventions.
 
-## Σύμβαση συντήρησης
+## Maintenance conventions
 
-- Κράτησε το SKILL.md κάτω από 500 γραμμές και σε έγκυρο UTF-8.
-- Χρησιμοποίησε μόνο name και description στο frontmatter.
-- Κράτησε τα 37 μοτίβα συνεχόμενα. Κάθε μοτίβο πρέπει να έχει ακριβώς ένα ζεύγος «Πριν» και «Μετά» με πρωτότυπο ελληνικό παράδειγμα. Συγχρόνισε κάθε αλλαγή με τον πίνακα του README.
-- Μην αντιγράφεις κείμενο ή παραδείγματα από το upstream Humanizer. Διατήρησε την αναφορά έμπνευσης και τον σύνδεσμο στο README.
-- Μην αλλάζεις πραγματικά στοιχεία μέσα στα παραδείγματα για να γίνει ένα rewrite πιο ζωντανό.
-- Όταν αλλάζει η έκδοση, ενημέρωσε μαζί το plugin.json και το ιστορικό εκδόσεων του README.
-- Κράτησε την τεκμηρίωση φορητή. Οι αναφορές σε Codex ή Claude είναι παραδείγματα υποστήριξης, όχι περιορισμοί.
+- Keep `SKILL.md` under 500 lines and encoded as valid UTF-8.
+- Use only `name` and `description` in the frontmatter.
+- Keep the 37 patterns contiguous. Each pattern must contain exactly one `Πριν` and `Μετά` pair with an original Greek example. Keep every change synchronized with the table in `README.md`.
+- Do not copy text or examples from the upstream Humanizer. Preserve the inspiration credit and repository link in `README.md`.
+- Do not change factual details in examples merely to make a rewrite more vivid.
+- When changing the version, update `plugin.json` and the release history in `README.md` together.
+- Keep the documentation portable. References to Codex or Claude are examples of supported environments, not limitations.
 
-## Έλεγχοι πριν από δημοσίευση
+## Pre-publication checks
 
     python scripts/validate-package.py
     npx skills add . --list
