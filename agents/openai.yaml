@@ -1,0 +1,4 @@
+interface:
+  display_name: "Greek Writing"
+  short_description: "Φυσικό ελληνικό κείμενο χωρίς ύφος AI"
+  default_prompt: "Χρησιμοποίησε το $greek-writing για να κάνεις αυτό το κείμενο να ακούγεται φυσικό, κρατώντας το νόημα και όλα τα πραγματικά στοιχεία."

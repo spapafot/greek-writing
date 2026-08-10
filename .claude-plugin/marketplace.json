@@ -1,0 +1,18 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-marketplace-manifest.json",
+  "name": "greek-writing",
+  "owner": {
+    "name": "spapafot",
+    "url": "https://github.com/spapafot"
+  },
+  "description": "The Greek Writing skill, installable as a Claude Code plugin.",
+  "plugins": [
+    {
+      "name": "greek-writing",
+      "source": "./",
+      "description": "Edit Greek prose so it sounds natural without inventing facts.",
+      "license": "MIT",
+      "keywords": ["greek", "writing", "editing", "humanize", "prose", "style"]
+    }
+  ]
+}
