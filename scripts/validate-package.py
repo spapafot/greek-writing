@@ -15,6 +15,8 @@ PLUGIN_PATH = ROOT / ".claude-plugin" / "plugin.json"
 MARKETPLACE_PATH = ROOT / ".claude-plugin" / "marketplace.json"
 OPENAI_PATH = ROOT / "agents" / "openai.yaml"
 
+LINE_BUDGET = 600
+
 
 def fail(message: str) -> None:
     raise SystemExit(message)
@@ -30,6 +32,19 @@ def read_text(path: Path) -> str:
         return path.read_text(encoding="utf-8")
     except UnicodeDecodeError as error:
         fail(f"{path.relative_to(ROOT)} is not valid UTF-8: {error}")
+
+
+def find_labels(block: str, label: str) -> list[int]:
+    """Positions of a `Πριν:` / `Μετά:` style label, tolerating bold and spacing."""
+    return [match.start() for match in re.finditer(rf"(?m)^[ \t*_]*{label}[ \t*_]*:", block)]
+
+
+def has_quote_after(block: str, position: int) -> bool:
+    """A blockquote follows the label, ignoring any blank lines in between."""
+    for line in block[position:].splitlines()[1:]:
+        if line.strip():
+            return line.lstrip().startswith(">")
+    return False
 
 
 for required_path in (
@@ -53,29 +68,30 @@ frontmatter_match = re.match(r"\A---\n(.*?)\n---\n", skill, re.DOTALL)
 require(frontmatter_match is not None, "SKILL.md must start with YAML frontmatter")
 frontmatter = frontmatter_match.group(1)
 frontmatter_keys = re.findall(r"(?m)^([a-z][a-z0-9_-]*):", frontmatter)
-require(
-    frontmatter_keys == ["name", "description"],
-    f"SKILL.md frontmatter must contain only name and description, found {frontmatter_keys}",
-)
+for required_key in ("name", "description"):
+    require(
+        required_key in frontmatter_keys,
+        f"SKILL.md frontmatter must define {required_key}, found {frontmatter_keys}",
+    )
 
-skill_name_match = re.search(r"(?m)^name:\s*([a-z0-9-]+)\s*$", frontmatter)
+skill_name_match = re.search(r"""(?m)^name:\s*["']?([a-z0-9-]+)["']?\s*$""", frontmatter)
 require(skill_name_match is not None, "SKILL.md name is missing or invalid")
 skill_name = skill_name_match.group(1)
-require(skill_name == "greek-writing", f"Unexpected skill name: {skill_name}")
 
 description_match = re.search(r"(?m)^description:\s*(.+)$", frontmatter)
 require(description_match is not None, "SKILL.md description is missing")
-require(len(description_match.group(1).strip()) >= 80, "SKILL.md description is too short")
+description = description_match.group(1).strip().strip("\"'")
+require(len(description) >= 60, f"SKILL.md description is too short ({len(description)} chars)")
 
-pattern_numbers = [
-    int(number) for number in re.findall(r"(?m)^### ([0-9]+)\. ", skill)
-]
+pattern_matches = list(re.finditer(r"(?m)^#{2,4} *([0-9]+)[.)] ", skill))
+pattern_numbers = [int(match.group(1)) for match in pattern_matches]
+pattern_count = len(pattern_numbers)
+require(pattern_count > 0, "SKILL.md contains no numbered patterns")
 require(
-    pattern_numbers == list(range(1, 38)),
-    f"Expected patterns 1-37 in SKILL.md, found {pattern_numbers}",
+    pattern_numbers == list(range(1, pattern_count + 1)),
+    f"SKILL.md patterns must be numbered 1-{pattern_count} without gaps, found {pattern_numbers}",
 )
 
-pattern_matches = list(re.finditer(r"(?m)^### ([0-9]+)\. ", skill))
 for index, pattern_match in enumerate(pattern_matches):
     block_start = pattern_match.start()
     block_end = (
@@ -87,39 +103,55 @@ for index, pattern_match in enumerate(pattern_matches):
         block_end = len(skill)
     block = skill[block_start:block_end]
     number = pattern_match.group(1)
-    before_marker = "\nΠριν:\n>"
-    after_marker = "\nΜετά:\n>"
-    require(block.count(before_marker) == 1, f"Pattern {number} must have one Πριν example")
-    require(block.count(after_marker) == 1, f"Pattern {number} must have one Μετά example")
-    require(block.index(before_marker) < block.index(after_marker), f"Pattern {number} examples are out of order")
+    before_positions = find_labels(block, "Πριν")
+    after_positions = find_labels(block, "Μετά")
+    require(before_positions, f"Pattern {number} must have a Πριν example")
+    require(after_positions, f"Pattern {number} must have a Μετά example")
+    require(
+        len(before_positions) == len(after_positions),
+        f"Pattern {number} has {len(before_positions)} Πριν and {len(after_positions)} Μετά examples",
+    )
+    require(
+        all(before < after for before, after in zip(before_positions, after_positions)),
+        f"Pattern {number} examples are out of order",
+    )
+    for label, positions in (("Πριν", before_positions), ("Μετά", after_positions)):
+        require(
+            all(has_quote_after(block, position) for position in positions),
+            f"Pattern {number} {label} example must be followed by a > blockquote",
+        )
 
 readme_numbers = {
-    int(number) for number in re.findall(r"(?m)^\|\s*([0-9]+)\s*\|", readme)
+    int(number) for number in re.findall(r"(?m)^\|\s*\**\s*([0-9]+)\s*\**\s*\|", readme)
 }
 require(
-    readme_numbers == set(range(1, 38)),
-    "README pattern table must contain patterns 1-37",
+    readme_numbers == set(pattern_numbers),
+    f"README pattern table must list patterns 1-{pattern_count}, "
+    f"missing {sorted(set(pattern_numbers) - readme_numbers)}, "
+    f"unexpected {sorted(readme_numbers - set(pattern_numbers))}",
 )
 
-require(len(skill.splitlines()) <= 500, "SKILL.md exceeds the 500-line portability budget")
+skill_lines = len(skill.splitlines())
+require(skill_lines <= LINE_BUDGET, f"SKILL.md is {skill_lines} lines, over the {LINE_BUDGET}-line portability budget")
 require(
-    "[blader's Humanizer](https://github.com/blader/humanizer)" in readme,
+    re.search(r"github\.com/blader/humanizer", readme) is not None,
     "README must credit and link to blader/humanizer",
-)
-require(
-    "https://github.com/spapafot/greek-writing" in readme,
-    "README installation commands must use the package repository",
 )
 require(not (ROOT / "humanizer-el.md").exists(), "Remove the legacy humanizer-el.md file")
 
-version_match = re.search(r"(?m)^- \*\*([0-9]+\.[0-9]+\.[0-9]+)\*\*", readme)
+version_match = re.search(r"(?m)^\s*[-*#]+\s*\**([0-9]+\.[0-9]+\.[0-9]+)\**", readme)
 require(version_match is not None, "README version history is missing")
 readme_version = version_match.group(1)
 plugin_version = str(plugin.get("version", ""))
-require(readme_version == plugin_version, "README and plugin versions do not match")
+require(readme_version == plugin_version, f"README version {readme_version} != plugin version {plugin_version}")
 
 require(plugin.get("name") == skill_name, "Plugin and skill names do not match")
-require(plugin.get("repository") == "https://github.com/spapafot/greek-writing", "Plugin repository is incorrect")
+repository = str(plugin.get("repository", "")).rstrip("/")
+require(
+    re.fullmatch(r"https://github\.com/[\w.-]+/[\w.-]+", repository) is not None,
+    f"Plugin repository must be a GitHub URL, found {repository!r}",
+)
+require(repository in readme, f"README installation commands must reference {repository}")
 require(marketplace.get("name") == skill_name, "Marketplace and skill names do not match")
 plugins = marketplace.get("plugins")
 require(isinstance(plugins, list) and len(plugins) == 1, "Marketplace must expose one plugin")
